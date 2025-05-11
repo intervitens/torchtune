@@ -58,6 +58,104 @@ def get_cosine_schedule_with_warmup(
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
+def get_rex_scheduler(
+    optimizer: torch.optim.Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    min_lr_decay: float = 0.0,
+    min_lr_warmup: float = 0.0,
+    last_epoch: int = -1,
+) -> LambdaLR:
+    """
+    Create a learning rate schedule that linearly increases the learning rate from
+    ``min_lr_warmup`` to lr over ``num_warmup_steps``, then decreases to ``min_lr_warmup`` on a REX schedule over
+    the remaining ``num_training_steps-num_warmup_steps``.
+
+    This is based on the paper
+    https://arxiv.org/abs/2107.04197
+
+    Args:
+        optimizer (torch.optim.Optimizer): The optimizer for which to
+            schedule the learning rate.
+        num_warmup_steps (int): The number of steps for the warmup phase.
+        num_training_steps (int): The total number of training steps.
+        min_lr_decay (float): Final learning rate for the decay phase. Defaults to 0.0
+        min_lr_warmup (float): Starting learining rate for the warmup phase. Defaults to 0.0
+        last_epoch (int): The index of the last epoch when resuming training. Defaults to -1
+
+    Returns:
+        torch.optim.lr_scheduler.LambdaLR with the appropriate schedule.
+    """
+    lr = get_lr(optimizer)
+    min_lr_ratio_decay = min_lr_decay / lr
+    min_lr_ratio_warmup = min_lr_warmup / lr
+
+    def lr_lambda(current_step: int) -> float:
+        # linear warmup phase
+        if current_step < num_warmup_steps:
+            warmup_ratio = current_step / max(1, num_warmup_steps)
+            return min_lr_ratio_warmup + (1 - min_lr_ratio_warmup) * warmup_ratio
+
+        # Decay phase
+        progress = (current_step - num_warmup_steps) / max(
+            1, num_training_steps - num_warmup_steps
+        )
+
+        rex_ratio = (1 - progress) / (0.5 + 0.5 * (1 - progress))
+        return max(0.0, min_lr_ratio_decay + (1 - min_lr_ratio_decay) * rex_ratio)
+
+    return LambdaLR(optimizer, lr_lambda, last_epoch)
+
+
+def get_axo_rex_scheduler(
+    optimizer: torch.optim.Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    min_lr_decay: float = 0.0,
+    min_lr_warmup: float = 0.0,
+    last_epoch: int = -1,
+) -> LambdaLR:
+    """
+    Create a learning rate schedule that linearly increases the learning rate from
+    ``min_lr_warmup`` to lr over ``num_warmup_steps``, then decreases to ``min_lr_warmup`` on a REX schedule over
+    the remaining ``num_training_steps-num_warmup_steps``.
+
+    This is based on the paper
+    https://arxiv.org/abs/2107.04197
+
+    Args:
+        optimizer (torch.optim.Optimizer): The optimizer for which to
+            schedule the learning rate.
+        num_warmup_steps (int): The number of steps for the warmup phase.
+        num_training_steps (int): The total number of training steps.
+        min_lr_decay (float): Final learning rate for the decay phase. Defaults to 0.0
+        min_lr_warmup (float): Starting learining rate for the warmup phase. Defaults to 0.0
+        last_epoch (int): The index of the last epoch when resuming training. Defaults to -1
+
+    Returns:
+        torch.optim.lr_scheduler.LambdaLR with the appropriate schedule.
+    """
+    lr = get_lr(optimizer)
+    min_lr_ratio_decay = min_lr_decay / lr
+    min_lr_ratio_warmup = min_lr_warmup / lr
+
+    def lr_lambda(current_step: int) -> float:
+        # linear warmup phase
+        if current_step < num_warmup_steps:
+            warmup_ratio = current_step / max(1, num_warmup_steps)
+            return min_lr_ratio_warmup + (1 - min_lr_ratio_warmup) * warmup_ratio
+
+        # Decay phase
+        progress = (current_step - num_warmup_steps) / max(
+            1, num_training_steps - num_warmup_steps
+        )
+
+        rex_ratio = (1 - progress) / (0.1 + 0.9 * (1 - progress))
+        return max(0.0, min_lr_ratio_decay + (1 - min_lr_ratio_decay) * rex_ratio)
+
+    return LambdaLR(optimizer, lr_lambda, last_epoch)
+
+
 def get_lr(
     optimizer: Union[torch.optim.Optimizer, OptimizerInBackwardWrapper]
 ) -> float:
