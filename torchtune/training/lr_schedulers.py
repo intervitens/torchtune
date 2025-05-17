@@ -157,7 +157,7 @@ def get_axo_rex_scheduler(
 
 
 def get_lr(
-    optimizer: Union[torch.optim.Optimizer, OptimizerInBackwardWrapper]
+    optimizer: Union[torch.optim.Optimizer, OptimizerInBackwardWrapper],
 ) -> float:
     """
     Full_finetune_distributed and full_finetune_single_device assume all optimizers have
