@@ -69,9 +69,9 @@ def tp_training_plan(model: nn.Module) -> dict[str, ParallelStyle]:
                 input_layouts=(Shard(1), Shard(1)),
                 desired_input_layouts=(Replicate(), Replicate()),
             ),
-            #f"layers.{layer_id}.attn.q_norm": SequenceParallel(),
+            #f"layers.{layer_id}.attn.q_norm": NoParallel(),
             f"layers.{layer_id}.attn.q_proj": ColwiseParallel(),
-            #f"layers.{layer_id}.attn.k_norm": SequenceParallel(),
+            #f"layers.{layer_id}.attn.k_norm": NoParallel(),
             f"layers.{layer_id}.attn.k_proj": ColwiseParallel(),
             f"layers.{layer_id}.attn.v_proj": ColwiseParallel(),
             f"layers.{layer_id}.attn.output_proj": RowwiseParallel(

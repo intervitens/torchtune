@@ -73,7 +73,7 @@ class TokenChoiceTopKRouter(nn.Module):
         )
         self.selected_experts_indices = selected_experts_indices
         if self.norm_topk_prob:
-            top_scores /= top_scores.sum(dim=-1, keepdim=True).to(x.dtype)
+            top_scores /= top_scores.sum(dim=-1, keepdim=True)#.to(x.dtype)
 
         # group tokens together by expert indices from 0 to num_experts and pass that to experts forward
         num_tokens_per_expert = torch.histc(
