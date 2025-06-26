@@ -17,7 +17,7 @@ use_grouped_mm = True
 
 
 def should_use_grouped_mm():
-    if use_grouped_mm and not has_cuda_capability(9, 0):
+    if use_grouped_mm and not (has_cuda_capability(9, 0) or has_cuda_capability(10,0)):
         log_once(
             _log,
             "Failed to use grouped mm, which is only supported on SM90 or later",

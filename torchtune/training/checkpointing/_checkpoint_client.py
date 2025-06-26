@@ -225,6 +225,9 @@ class CheckpointClient:
         resume_from_checkpoint flag set to True and recipe file paths set in the config.
         """
         intermediate_checkpoint = epoch + 1 < training_progress.total_epochs
+        #intermediate_checkpoint = False # kek
+        if intermediate_checkpoint:
+            return
         checkpointer = self._get_checkpointer()
         is_not_distributed_checkpointer = not isinstance(
             checkpointer, DistributedCheckpointer
@@ -359,8 +362,10 @@ class CheckpointClient:
         checkpointer user has configured.
         """
         intermediate_checkpoint = epoch + 1 < training_progress.total_epochs
+        #intermediate_checkpoint = False # kek
 
         if intermediate_checkpoint and self._enable_async_checkpointing:
+            return
             self._save_checkpoint_async(
                 model,
                 optimizer,

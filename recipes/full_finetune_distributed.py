@@ -4,6 +4,8 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+from datetime import timedelta
+
 import os
 import sys
 import time
@@ -148,7 +150,8 @@ class FullFinetuneRecipeDistributed(FTRecipeInterface):
             offload_ops_to_cpu=self.fsdp_cpu_offload
             or self._enable_async_checkpointing,
         )
-        init_process_group(self.distributed_backend)
+        timeout_long_ncll = timedelta(seconds=6000)  # 100 minutes
+        init_process_group(backend=self.distributed_backend, timeout=timeout_long_ncll)
 
         # Initialize distributed variables
         self.world_size, self.rank = utils.get_world_size_and_rank()
