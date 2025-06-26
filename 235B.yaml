@@ -1,0 +1,95 @@
+output_dir: ./qwen3_235B_A22B_hydrus/full # /tmp may be deleted by your system. Change it to your preference.
+
+# Tokenizer
+tokenizer:
+  _component_: torchtune.models.qwen3.qwen3_tokenizer
+  path: ./Qwen3-235B-A22B-tt/vocab.json
+  merges_file: ./Qwen3-235B-A22B-tt/merges.txt
+  max_seq_len: 32768
+
+# Dataset
+dataset:
+  _component_: torchtune.datasets.pretokenized_dataset
+  source: IntervitensInc/hydrus-refusals-tt
+  split: train
+  packed: True  # True increases speed
+seed: 42
+shuffle: False
+
+#dataset:
+#  _component_: torchtune.datasets.alpaca_cleaned_dataset
+#  packed: False  # True increases speed
+#seed: null
+#shuffle: True
+
+
+# Model Arguments
+model:
+  _component_: torchtune.models.qwen3.qwen3_moe_235b_a22b
+
+#tensor_parallel_dim: 4 # For multi-node training we recommend tensor_parallel_dim: 8
+#tensor_parallel_plan:
+#  _component_: torchtune.models.qwen3.tp_plan
+#data_parallel_shard_dim: -1 # Will infer based on TP dim, effectively controls FSDP
+#data_parallel_replicate_dim: 1
+
+checkpointer:
+  _component_: torchtune.training.FullModelTorchTuneCheckpointer
+  checkpoint_dir: ./Qwen3-235B-A22B-tt
+  checkpoint_files: [
+    model-00001-of-00001.bin,
+  ]
+  recipe_checkpoint: null
+  output_dir: ${output_dir}
+  model_type: QWEN3_MOE
+resume_from_checkpoint: False
+enable_async_checkpointing: False
+
+# Fine-tuning arguments
+batch_size: 1
+epochs: 2
+optimizer:
+  _component_: torchao.optim.AdamW8bit
+    #  fused: True
+  lr: 3e-6
+lr_scheduler:
+  _component_: torchtune.training.lr_schedulers.get_cosine_schedule_with_warmup
+  num_warmup_steps: 30
+
+loss:
+  _component_: torchtune.modules.loss.LinearCrossEntropyLoss
+max_steps_per_epoch: null
+gradient_accumulation_steps: 1  # Use to increase effective batch size
+clip_grad_norm: null
+compile:
+    model: True
+    loss: True
+    scale_grads: True
+    optimizer_step: False
+  # torch.compile the model + loss, True increases speed + decreases memory
+optimizer_in_bwd: True  # True saves memory. Requires gradient_accumulation_steps=1
+
+# Training env
+device: cuda
+
+
+# Memory management
+enable_activation_checkpointing: True # True reduces memory
+enable_activation_offloading: True  # True reduces memory
+custom_sharded_layers: ['tok_embeddings', 'output']  # Layers to shard separately (useful for large vocab size models). Lower Memory, but lower speed.
+fsdp_cpu_offload: False
+
+# Reduced precision
+dtype: bf16
+
+# Logging
+#metric_logger:
+#  _component_: torchtune.training.metric_logging.DiskLogger
+#  log_dir: ${output_dir}/logs
+metric_logger:
+  _component_: torchtune.training.metric_logging.WandBLogger
+  project: qwen3-235-a22b-hdrs
+log_every_n_steps: 1
+log_peak_memory_stats: True
+log_level: INFO  # DEBUG, WARN, etc.
+
