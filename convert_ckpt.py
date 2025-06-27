@@ -36,6 +36,10 @@ checkpoint_files_out = {
 
 _checkpoint_client_1 = FullModelTorchTuneCheckpointer(checkpoint_dir_in, checkpoint_files_in, model_type, output_dir)
 _checkpoint_client_2 = FullModelHFCheckpointer(checkpoint_dir_out, checkpoint_files_out, model_type, output_dir)
+
+#print("load weight map")
+_checkpoint_client_2.load_weight_map()
+
 print("Loading torchtune ckpt")
 checkpoint_dict = _checkpoint_client_1.load_checkpoint()
 print("Saving HF ckpt")

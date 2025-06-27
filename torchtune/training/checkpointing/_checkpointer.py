@@ -702,6 +702,23 @@ class FullModelHFCheckpointer(_CheckpointerInterface):
             converted_state_dict.update(recipe_state)
 
         return converted_state_dict
+    
+    def load_weight_map(self):
+        self._weight_map = {}
+        from torch.distributed.checkpoint import HuggingFaceStorageReader
+
+        # DCP load using the storage reader
+        hf_storage_reader = HuggingFaceStorageReader(path=self._checkpoint_dir)
+
+        # TODO: reading the metadata isn't the best way to do this because
+        # DCP can change their metadata structure and we've already read in
+        # the metadata when doing _load_state_dict_from_keys
+        metadata = hf_storage_reader.read_metadata()
+        self._weight_map = {
+            key.fqn: os.path.basename(val.relative_path)
+            for key, val in metadata.storage_data.items()
+        }
+        #print(self._weight_map)
 
     def save_checkpoint(
         self,
