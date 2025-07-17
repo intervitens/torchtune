@@ -34,6 +34,8 @@ class TokenChoiceTopKRouter(nn.Module):
         experts_per_token: int,
         norm_topk_prob: bool = False,
         softmax: bool = False,
+        score_correction_bias: bool = False,
+        routed_scaling_factor = None,
     ):
         super().__init__()
         self.gate = gate
@@ -42,6 +44,10 @@ class TokenChoiceTopKRouter(nn.Module):
         self.experts_per_token = experts_per_token
         self.norm_topk_prob = norm_topk_prob
         self.softmax = softmax
+        self._score_correction_bias = score_correction_bias
+        if score_correction_bias:
+            self.register_buffer("score_correction_bias", torch.zeros(self.num_experts))
+        self.routed_scaling_factor = routed_scaling_factor
 
     def forward(
         self, x: torch.Tensor
@@ -60,6 +66,7 @@ class TokenChoiceTopKRouter(nn.Module):
         """
         # scores shape (bs*slen, num_experts)
         scores = self.gate(x)
+        # scores = F.linear(x.type(torch.float32), self.gate.type(torch.float32))
 
         # By default, sigmoid is performed in float32 to avoid loss explosion
         if self.softmax:
@@ -69,13 +76,19 @@ class TokenChoiceTopKRouter(nn.Module):
         else:
             scores = torch.sigmoid(scores.to(torch.float32)).to(x.dtype)
 
+        if self._score_correction_bias:
+            scores += self.score_correction_bias
+
         # top scores shape (bs*slen, top_k)
         top_scores, selected_experts_indices = torch.topk(
             scores, k=self.experts_per_token, dim=1
         )
         self.selected_experts_indices = selected_experts_indices
         if self.norm_topk_prob:
-            top_scores /= top_scores.sum(dim=-1, keepdim=True).to(x.dtype)
+            top_scores /= top_scores.sum(dim=-1, keepdim=True).to(x.dtype) + 1e-20
+        
+        if self.routed_scaling_factor is not None:
+            top_scores = top_scores * self.routed_scaling_factor
 
         # group tokens together by expert indices from 0 to num_experts and pass that to experts forward
         num_tokens_per_expert = torch.histc(
